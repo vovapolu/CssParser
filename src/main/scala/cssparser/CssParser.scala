@@ -129,19 +129,3 @@ object CssParser {
       case _ => None
     }))
 }
-
-object Main extends App {
-  import CssParser._
-
-  println(stylesheet.parse(
-  """
-    |
-    |p > a {
-    |    color: blue;
-    |    text-decoration: underline;
-    |  }
-    |
-  """.stripMargin)
-  )
-
-}
