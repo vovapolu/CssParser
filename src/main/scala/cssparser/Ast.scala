@@ -26,7 +26,7 @@ object Ast {
 
   case class PercentageToken(number: String) extends SimpleToken
 
-  case class UnicodeRangeToken(left: String, right: String)
+  case class UnicodeRangeToken(left: String, right: String) extends SimpleToken
 
   case class IncludeMatchToken() extends SimpleToken
   case class DashMatchToken() extends SimpleToken
@@ -42,10 +42,10 @@ object Ast {
   case class DelimToken(delimeter: String) extends SimpleToken
 
 
-  class Block(leftBracket: String, rightBracket: String, values: Seq[ComponentValue]) extends ComponentValue
-  case class BracketsBlock(values: Seq[ComponentValue]) extends Block("(", ")", values)
-  case class CurlyBracketsBlock(values: Seq[ComponentValue]) extends Block("{", "}", values)
-  case class SquareBracketsBlock(values: Seq[ComponentValue]) extends Block("[", "]", values)
+  class Block(val leftBracket: String, val rightBracket: String, val values: Seq[ComponentValue]) extends ComponentValue
+  case class BracketsBlock(override val values: Seq[ComponentValue]) extends Block("(", ")", values)
+  case class CurlyBracketsBlock(override val values: Seq[ComponentValue]) extends Block("{", "}", values)
+  case class SquareBracketsBlock(override val values: Seq[ComponentValue]) extends Block("[", "]", values)
 
   case class FunctionBlock(name: String, values: Seq[ComponentValue]) extends ComponentValue
 
@@ -55,11 +55,11 @@ object Ast {
 
   case class AtRule(name: String, selector: Seq[ComponentValue], block: Option[CurlyBracketsBlock]) extends Rule
 
-  case class Declaration(name: String, value: Seq[ComponentValue], isImportant: Boolean)
-
-  case class DeclarationList(declarations: Seq[Either[Declaration, AtRule]])
-
   case class RuleList(rules: Seq[Rule])
 
   case class Stylesheet(rules: Seq[Either[Rule, CToken]])
+
+  case class Declaration(name: String, value: Seq[ComponentValue], isImportant: Boolean)
+
+  case class DeclarationList(declarations: Seq[Either[Declaration, AtRule]])
 }

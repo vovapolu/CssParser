@@ -32,10 +32,10 @@ object CssParser {
   val hash_token = P( "#" ~
     (CharIn('a' to 'z', 'A' to 'Z', '0' to '9', "_-") | escape).rep(1).! ) map Ast.HashWordToken
 
-  val string_token_char = (!("\"" | "\\" | newline) ~ AnyChar) | escape | ("\\" ~ newline)
+  val string_token_char = ((!("\"" | "'" | "\\" | newline ) ~ AnyChar) | escape | ("\\" ~ newline)).log()
 
   val string_token = P( ("\"" ~/ string_token_char.rep.! ~/ "\"") |
-    ("\'" ~/ string_token_char.rep.! ~/ "\'") ).log() map Ast.StringToken
+    ("'" ~/ string_token_char.rep.! ~/ "'") ).log() map Ast.StringToken
 
   val url_unquoted = P( ((!(CharIn("\"\'()\\") | whitespace) ~ AnyChar) | escape).rep(1) )
 
@@ -49,7 +49,7 @@ object CssParser {
   val dimension_token = P( number_token.! ~ ident_token.! ) map
     { case (number, ident) => Ast.DimensionToken(number, ident)}
 
-  val percentage_token = P( number_token.! ~ "%" ) map Ast.PercentageToken
+  val percentage_token = P( number_token.! ~ "%" ).log() map Ast.PercentageToken
 
   val unicode_range_token = P( CharIn("Uu") ~ "+" ~ hex_digit.rep(min=1, max=6).! |
     (hex_digit.rep(min=1, max=5).! flatMap (s => "?".rep(min=1, max=6 - s.length))).! |
@@ -67,13 +67,18 @@ object CssParser {
   val CDO_token = P( "<!--" ) map {_ => Ast.CdoToken}
   val CDC_token = P( "-->" ) map {_ => Ast.CdcToken}
 
-  val delim_token = P( CharIn("#$*+,-./:;<>@^~").! ).log() map Ast.DelimToken
+  val delim_token = P( CharIn("#$*+,-./:;<>@^~=").! ).log() map Ast.DelimToken
 
   // any token except function_token
-  val simple_token: Parser[Option[Ast.SimpleToken]] = P( whitespace_token | ident_token | at_word_token | hash_token |
-    string_token | url_token | number_token | dimension_token | percentage_token | unicode_range_token |
-    include_match_token | dash_match_token | prefix_match_token | suffix_match_token | substring_match_token |
-    column_token | CDO_token | CDC_token | delim_token ).log() map {
+  val simple_token: Parser[Option[Ast.SimpleToken]] = P(
+    whitespace_token | percentage_token |
+    dimension_token | unicode_range_token |
+    url_token  | at_word_token | hash_token |
+    string_token | ident_token | number_token |
+    include_match_token | dash_match_token |
+    prefix_match_token | suffix_match_token |
+    substring_match_token | column_token |
+    CDO_token | CDC_token | delim_token ).log() map {
       case st: Ast.SimpleToken => Some(st)
       case _ => None
     }
