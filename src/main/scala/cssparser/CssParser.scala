@@ -18,24 +18,24 @@ object CssParser {
   val escape = P( "\\" ~ ((!(newline | hex_digit) ~ AnyChar) |
     (hex_digit.rep(min=1, max=6) ~ whitespace.?)) )
 
-  val whitespace_token = P( whitespace.rep(1) ).log()
+  val whitespace_token = P( comment | whitespace.rep(1) )
 
   val ws = P( whitespace_token.rep )
 
   val ident_token = P( ("-".? ~ (CharIn('a' to 'z', 'A' to 'Z', "_") | escape) ~
-    (CharIn('a' to 'z', 'A' to 'Z', '0' to '9', "_-") | escape).rep).! ).log() map Ast.IdentToken
+    (CharIn('a' to 'z', 'A' to 'Z', '0' to '9', "_-") | escape).rep).! ) map Ast.IdentToken
 
-  val function_token = P( ident_token.! ~ "(" ).log() map Ast.FunctionToken
+  val function_token = P( ident_token.! ~ "(" ) map Ast.FunctionToken
 
   val at_word_token = P( "@" ~ ident_token.! ) map Ast.AtWordToken
 
   val hash_token = P( "#" ~
     (CharIn('a' to 'z', 'A' to 'Z', '0' to '9', "_-") | escape).rep(1).! ) map Ast.HashWordToken
 
-  val string_token_char = ((!("\"" | "'" | "\\" | newline ) ~ AnyChar) | escape | ("\\" ~ newline)).log()
+  val string_token_char = ((!("\"" | "'" | "\\" | newline ) ~ AnyChar) | escape | ("\\" ~ newline))
 
   val string_token = P( ("\"" ~/ string_token_char.rep.! ~/ "\"") |
-    ("'" ~/ string_token_char.rep.! ~/ "'") ).log() map Ast.StringToken
+    ("'" ~/ string_token_char.rep.! ~/ "'") ) map Ast.StringToken
 
   val url_unquoted = P( ((!(CharIn("\"\'()\\") | whitespace) ~ AnyChar) | escape).rep(1) )
 
@@ -49,7 +49,7 @@ object CssParser {
   val dimension_token = P( number_token.! ~ ident_token.! ) map
     { case (number, ident) => Ast.DimensionToken(number, ident)}
 
-  val percentage_token = P( number_token.! ~ "%" ).log() map Ast.PercentageToken
+  val percentage_token = P( number_token.! ~ "%" ) map Ast.PercentageToken
 
   val unicode_range_token = P( CharIn("Uu") ~ "+" ~ hex_digit.rep(min=1, max=6).! |
     (hex_digit.rep(min=1, max=5).! flatMap (s => "?".rep(min=1, max=6 - s.length))).! |
@@ -67,7 +67,7 @@ object CssParser {
   val CDO_token = P( "<!--" ) map {_ => Ast.CdoToken}
   val CDC_token = P( "-->" ) map {_ => Ast.CdcToken}
 
-  val delim_token = P( CharIn("#$*+,-./:;<>@^~=").! ).log() map Ast.DelimToken
+  val delim_token = P( CharIn("#$*+,-./:;<>@^~=!").! ) map Ast.DelimToken
 
   // any token except function_token
   val simple_token: Parser[Option[Ast.SimpleToken]] = P(
@@ -78,7 +78,7 @@ object CssParser {
     include_match_token | dash_match_token |
     prefix_match_token | suffix_match_token |
     substring_match_token | column_token |
-    CDO_token | CDC_token | delim_token ).log() map {
+    CDO_token | CDC_token | delim_token ) map {
       case st: Ast.SimpleToken => Some(st)
       case _ => None
     }
@@ -87,47 +87,47 @@ object CssParser {
   val curlyBracketsBlock = P( "{" ~ componentValue.rep ~ "}" ) map (values => Ast.CurlyBracketsBlock(values.flatten))
   val squareBracketsBlock = P( "[" ~ componentValue.rep ~ "]" ) map (values => Ast.SquareBracketsBlock(values.flatten))
 
-  val functionBlock = P( function_token ~ componentValue.rep ~ ")").log() map {
+  val functionBlock = P( function_token ~ componentValue.rep ~ ")") map {
     case (Ast.FunctionToken(name), values: Seq[Option[Ast.ComponentValue]]) => Ast.FunctionBlock(name, values.flatten)
   }
 
   val componentValue: Parser[Option[Ast.ComponentValue]] = P( simple_token | bracketsBlock |
-    curlyBracketsBlock | squareBracketsBlock | functionBlock ).log() map {
+    curlyBracketsBlock | squareBracketsBlock | functionBlock ) map {
       case cv: Ast.ComponentValue => Some(cv)
       case Some(cv: Ast.ComponentValue) => Some(cv)
       case _ => None
     }
 
-  val important = P( "!" ~ ws ~ "important" ~ ws).log()
+  val important = P( "!" ~ ws ~ "important" ~ ws)
 
-  val declaration = P( ident_token.! ~ ws ~ ":" ~ componentValue.rep ~ important.!.?).log() map {
+  val declaration = P( ident_token.! ~ ws ~ ":" ~ componentValue.rep ~ important.!.?) map {
     case (ident, values, Some(_)) => Ast.Declaration(ident, values.flatten, isImportant = true)
     case (ident, values, None) => Ast.Declaration(ident, values.flatten, isImportant = false)
   }
 
-  val atRule = P( at_word_token ~ (!CharIn(";{") ~ componentValue).rep ~ (";" | curlyBracketsBlock) ).log() map {
+  val atRule = P( at_word_token ~ (!CharIn(";{") ~ componentValue).rep ~ (";" | curlyBracketsBlock) ) map {
     case (Ast.AtWordToken(name), values, block: Ast.CurlyBracketsBlock) => Ast.AtRule(name, values.flatten, Some(block))
     case (Ast.AtWordToken(name), values, _) => Ast.AtRule(name, values.flatten, None)
   }
 
-  val qualifiedRule = P( (!"{" ~ componentValue).rep ~ curlyBracketsBlock ).log() map {
+  val qualifiedRule = P( (!"{" ~ componentValue).rep ~ curlyBracketsBlock ) map {
     case (values, block) => Ast.QualifiedRule(values.flatten, block)
   }
 
-  val declarationList = P( ws ~ (";" | atRule | declaration).rep ).log() map (
+  val declarationList = P( ws ~ (";" | atRule | declaration).rep ) map (
     s => Ast.DeclarationList(s flatMap {
       case atRule: Ast.AtRule => Some(Right(atRule))
       case declaration: Ast.Declaration => Some(Left(declaration))
       case _ => None
     }))
 
-  val ruleList = P( (whitespace_token | qualifiedRule | atRule).rep ).log() map (
+  val ruleList = P( (whitespace_token | qualifiedRule | atRule).rep ) map (
     s => Ast.RuleList(s flatMap {
       case rule: Ast.Rule => Some(rule)
       case _ => None
     }))
 
-  val stylesheet = P( (CDO_token | CDC_token | whitespace_token | qualifiedRule | atRule).rep ).log() map (
+  val stylesheet = P( (CDO_token | CDC_token | whitespace_token | qualifiedRule | atRule).rep ) map (
     s => Ast.Stylesheet(s flatMap {
       case rule: Ast.Rule => Some(Left(rule))
       case ctoken: Ast.CToken => Some(Right(ctoken))

@@ -36,7 +36,7 @@ object PrettyPrinter {
     values.dropRight(1).map {
       case DelimToken(";") => ";" + indentPart
       case st: SimpleToken => printToken(st) + " "
-      case block: CurlyBracketsBlock => printBlock(block, indent, isIndentation=isIndentation)
+      case block: CurlyBracketsBlock => printBlock(block, indent, isIndentation=isIndentation) + indentPart
       case block: Block => printBlock(block, isIndentation = false)
     }.mkString +
     (values.last match {
@@ -52,7 +52,7 @@ object PrettyPrinter {
       printComponentValues(block.values, indent + 1, isIndentation=isIndentation) +
       (if (isIndentation) "\n" + " " * indentSize * indent else "") +
       block.rightBracket +
-      (if (isIndentation && isLast) "\n" else " ")
+      (if (isIndentation && !isLast) "\n" else "")
   }
 
   def printRule(rule: Rule, indent: Int): String = {
